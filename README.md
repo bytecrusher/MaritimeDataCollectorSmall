@@ -23,7 +23,7 @@ The **MDC** will send these data even periodically or event driven to the server
 
 The **MaritimeDataCollector** is a microcontroller driven device. Here i am using an ESP32 from Espressif.
 
-The controller will be powered from a batterie. I my case it is located in my boat with a 12v batterie and goes most time into sleep mode.
+The controller will be powered from a batterie. In my case it is located in my boat with a 12v batterie and goes most time into sleep mode.
 
 #### Datasheet
 - 5V-35V supply voltage
@@ -35,6 +35,7 @@ The controller will be powered from a batterie. I my case it is located in my bo
 
 ## Development
 For Development i use as IDE VSC (Visual Studio Code) with PlatformIO as extension.
+For correct compile you have to rename "secret.h.exmaple" to "secret.h" and change the values.
 The Initial upload of the firmware needs to be done via USB.
 Now it also possible to update the ESP via OTA (OverTheAir).
 

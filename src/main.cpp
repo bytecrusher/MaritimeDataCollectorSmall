@@ -33,6 +33,7 @@ RTC_DATA_ATTR int updatecounter;
 uint32_t start, stop;
 char buffDate[20];
 char buffTime[20];
+char buffTimeStamp[20];
 
 #ifdef ESP32
   #include <HTTPClient.h>
@@ -98,6 +99,7 @@ void printLocalTime() {
   Serial.println(&timeinfo, "%d.%m.%Y %H:%M:%S");
   Serial.println();
   strftime(buffDate, 20, "%d.%m.%Y", &timeinfo);
+  strftime(buffTimeStamp, 20, "%Y-%m-%d %H:%M:%S", &timeinfo);
   strftime(buffTime, 20, "%H:%M:%S", &timeinfo);
 }
 
@@ -170,8 +172,9 @@ StaticJsonDocument<200> handleDS18b20Data(DeviceAddress deviceAddress)
   sensorData["typid"] = 1;
   sensorData["sensorAddress"] = buffer;
   sensorData["value1"] = String(tempC);
-  sensorData["date"] = String(buffDate);
-  sensorData["time"] = String(buffTime);
+  //sensorData["date"] = String(buffDate);
+  //sensorData["time"] = String(buffTime);
+  sensorData["timestamp"] = String(buffTimeStamp);
 
   return sensorData;
 }
