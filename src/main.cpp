@@ -9,6 +9,7 @@
 #include <HTTPUpdate.h>
 #include <ArduinoJson.h>
 #include <secret.h>
+#include <DS2438.h>
 
 #define FIRMWAREVERSION "0.0.2"
 #define protocollversion "1"
@@ -17,6 +18,10 @@
 OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&oneWire);
+
+//uint8_t DS2438_address[] = { 0x26, 0x63, 0x30, 0xd9, 0x00, 0x00, 0x00, 0xed };
+uint8_t DS2438_address[] = { 0x26, 0xA8, 0x38, 0xD1, 0x00, 0x00, 0x00, 0xA8 };
+DS2438 ds2438(&oneWire, DS2438_address);
 
 // variable to hold device addresses
 RTC_DATA_ATTR DeviceAddress sensoradresses[10];
@@ -143,6 +148,10 @@ byte getDeviceAddress(DeviceAddress deviceAddress)
       Serial.print("  Chip = DS1822");
       //type_s = 0;
       break;
+    case 0x26:
+      Serial.print("  Chip = DS2438 Battery Monitor");
+      //type_s = 2;
+      break;
     default:
       Serial.print("  Device is currently not supported.");
       return 0;
@@ -177,6 +186,51 @@ StaticJsonDocument<200> handleDS18b20Data(DeviceAddress deviceAddress)
   sensorData["timestamp"] = String(buffTimeStamp);
 
   return sensorData;
+}
+
+// Handle Data from Batterie Monitor
+String handleDS2438Data(DeviceAddress deviceAddress)
+{
+  float tempC = 0; //sensors.getTempC(deviceAddress);
+  float ds2438voltage = 0;
+  float ds2438voltageForCurrent = 0;
+  // Vin calc: Uin = ((R1 + R2) / R2) * U2
+    // r1 = 22000 Ohm
+    // r2 = 10000 Ohm
+  float ergebnis = 0;
+  float r1 = 22000;
+  float r2 = 10000;
+  String sensorAdresse; 
+
+  /*ds2438.update();
+  if (ds2438.isError()) {
+      Serial.println("Error reading from DS2438 device");
+  } else {
+    Serial.print("Temperature = ");
+    Serial.print(ds2438.getTemperature(), 1);
+    Serial.print("C, Channel A = ");
+    tempC = ds2438.getTemperature();
+    
+    ds2438voltage = ds2438.getVoltage(DS2438_CHA);
+    ergebnis = (((r1 + r2) / r2) * ds2438voltage);
+    Serial.print(ergebnis); // Batterievoltage
+    Serial.print("v, Channel B = ");
+    ds2438voltageForCurrent = ds2438.getVoltage(DS2438_CHB);
+    Serial.print(ds2438.getVoltage(DS2438_CHB), 1); // Current
+    Serial.println("v.");
+  }*/
+
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    // zero pad the address if necessary
+    if (deviceAddress[i] < 16) Serial.print("0");
+    Serial.print(deviceAddress[i], HEX);
+    sensorAdresse.concat(String(deviceAddress[i], HEX));  // Sensor Adress prepare for delivery
+  }
+  Serial.println("");
+
+  String httpRequestData = "&sensorAddress=" + sensorAdresse + "&value1=" + String(tempC) + "&value2=" + String(ergebnis) + "&value3=" + String(ds2438voltageForCurrent);
+  return httpRequestData;
 }
 
 void initialSetup() {
@@ -260,6 +314,8 @@ void setup(void)
     Serial.println(WiFi.macAddress());
   }
 
+  ds2438.begin();
+
   // Init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   printLocalTime();
@@ -278,6 +334,35 @@ void loop(void)
   for (uint8_t i = 0; i < numberOfDevices; i++)
   {
     allSensors[i] = handleDS18b20Data(sensoradresses[i]);
+  }
+
+    ds2438.update();
+   if (ds2438.isError()) {
+      Serial.println("Error reading from DS2438 device");
+  } else {
+    Serial.print("Temperature = ");
+    Serial.print(ds2438.getTemperature(), 1);
+    Serial.print("C, Channel A = ");
+    // Eingangsspannung berechnen: Uin = ((R1 + R2) / R2) * U2
+    // r1 = 22000
+    // r2 = 10000
+    float ds2438voltage = 0;
+    float ergebnis = 0;
+    float r1 = 22000;
+    float r2 = 10000;
+    ds2438voltage = ds2438.getVoltage(DS2438_CHA);
+    ergebnis = (((r1 + r2) / r2) * ds2438voltage);
+    Serial.print(ergebnis); // Batteriespannung
+    Serial.print("v, Channel B (IC VCC) = ");
+    //Serial.print(ds2438.getVoltage(DS2438_CHB), 1); // Strom
+    Serial.print(ds2438.getVoltage(DS2438_CHB)); // Strom
+    Serial.print(", current: ");
+    //Serial.print(ds2438.readCurr() / (4096.00 * 0.05));
+    //Serial.print(ds2438.readCurr() / (4096.00 * 0.0015));
+    Serial.print(ds2438.readCurr() / (4096.00 * 0.003));
+    Serial.print("A, current: ");
+    Serial.print(ds2438.readCurr() );
+    Serial.println(" value.");
   }
  
     //Check WiFi connection status
